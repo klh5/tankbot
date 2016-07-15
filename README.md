@@ -7,4 +7,4 @@ After getting Tankbot to work with ultrasonic and infrared distance sensors I ad
 
 If Tankbot detects an obstacle it will reverse and then turn to a random position (this prevents it from repeating the same movements over and over - for example when stuck in a corner).
 
-![alt tag](https://github.com/klh5/tankbot/tankbot.jpg)
+![alt tag](https://github.com/klh5/tankbot/blob/master/tankbot.jpg)
