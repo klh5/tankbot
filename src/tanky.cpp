@@ -1,39 +1,43 @@
 #include <Arduino.h>
 
+//Libraries
 #include <Servo.h>
 #include <MPU6050.h>
 #include <I2Cdev.h>
 #include <Wire.h>
 
+//Define parameters for the pan servo - straight ahead is not dead on 90 degrees
 #define PAN_MID 83
 #define PAN_RIGHT 0
-#define PAN_LEFT 180
+#define PAN_LEFT 179
 
+//Define parameters for tilt servo
 #define TILT_MID 160
-#define TILT_DOWN 180
+#define TILT_DOWN 179
 #define TILT_LEFT 100
 
-#define IR_PIN A8
-#define PING_PIN 3
-#define SWITCH_ONE 2
-#define LED_PIN 13
+#define IR_PIN A8									//Pin that the IR sensor is connected to
+#define PING_PIN 3								//Pin that the ultrasonic sensor is connected to
+#define SWITCH_ONE 2							//Interrupt pin that the bump sensors are connected to
+#define LED_PIN 13								//Pin that the LED is connected to
 
-#define firstMotorSpeed  6 //speed control
+#define firstMotorSpeed  6 				//Speed control
 #define secMotorSpeed  5
 
-#define firstMotorDir  7 //direction control
+#define firstMotorDir  7 					//Direction control
 #define secMotorDir  4
 
-int degreeGap = 6;
-volatile boolean goBack = false;
+int degreeGap = 6;								//Define the size of gaps that the robot can fit through
+volatile boolean goBack = false;	//This tells the robot whether it needs to back out of a situation
 
 Servo pan, tilt;
 int turnDegree = 20;
 MPU6050 accel;
 int16_t ax, ay, az;
 
-float mapValues [181];
-float mapValuesOrdered [181];
+//Servo rotates 180 degrees, so there are 180 readings
+float mapValues [180];
+float mapValuesOrdered [180];
 
 //Declare functions
 void go(int duration, int pwm);
@@ -61,7 +65,8 @@ void setup() {
   pan.attach(9);
   tilt.attach(10);
   accel.initialize();
-
+	
+  //Set up interrupt on pin 2, with crashed() as the ISR
   digitalWrite(SWITCH_ONE, HIGH);
   attachInterrupt(0, crashed, CHANGE);
 
@@ -69,6 +74,7 @@ void setup() {
   pinMode(secMotorDir, OUTPUT);
   pinMode(PING_PIN, OUTPUT);
 
+  //Tell servos to move to center positions
   pan.write(PAN_MID);
   delay(100);
   tilt.write(TILT_MID);
@@ -125,7 +131,7 @@ void go(int duration, int pwm) {
   }
   while(shouldMove!=false);
 
-  analogWrite(firstMotorSpeed, 0); // speed
+  analogWrite(firstMotorSpeed, 0);
   analogWrite(secMotorSpeed, 0);
 }
 
@@ -140,7 +146,7 @@ void scan() {
 
   pan.write(PAN_RIGHT);
   delay(50);
-  for(int i=PAN_RIGHT;i<=PAN_LEFT;i++) {
+  for(int i=PAN_RIGHT; i<=PAN_LEFT; i++) {
     pan.write(i);
     delay(15);
     int dist = getForwardDistance();
@@ -174,7 +180,7 @@ int findBestGap() {
   median = getMedian();
   smoothData();
 
-  for(i=0;i<181;) {
+  for(i=0;i<180;) {
     j = i+1;
 
     if(mapValues[i]-median > 0) {
@@ -186,12 +192,12 @@ int findBestGap() {
       else {
         startDist = mapValues[i+1];
       }
-      while(mapValues[j]-median > 0 && j<181) {
+      while(mapValues[j]-median > 0 && j<180) {
         j++;
         counter++;
       }
       endEdge=j+1;
-      if(j==180) {
+      if(j==179) {
         endDist = median;
       }
       else {
@@ -238,7 +244,7 @@ float getMedian() {
 
   copyArray();
 
-  for(c=1;c<181;c++) {
+  for(c=1; c<180; c++) {
     d = c;
     while (d > 0 && mapValuesOrdered[d] < mapValuesOrdered[d-1]) {
       t = mapValuesOrdered[d];
@@ -254,7 +260,7 @@ float getMedian() {
 
 void copyArray() {
 
-  for(int i=0;i<181;i++) {
+  for(int i=0;i<180;i++) {
     mapValuesOrdered[i] = mapValues[i];
   }
 
@@ -264,7 +270,7 @@ void smoothData() {
 
   float total,newMean;
 
-  for(int i=0;i<179;i++) {
+  for(int i=0;i<178;i++) {
     newMean = 0;
     total = mapValues[i];
     for(int j=i+1;j<=i+2;j++) {
@@ -362,7 +368,7 @@ void checkAccel() {
   float totalY = 0;
   float averageX, averageY;
 
-  for(int i=0;i<=50;i++) {
+  for(int i=0; i<=50; i++) {
     accel.getAcceleration(&ax, &ay, &az);
     totalX += ax;
     totalY += ay;
@@ -380,33 +386,58 @@ void checkAccel() {
 
 void goBackward(int duration, int pwm) {
 
-  digitalWrite(firstMotorDir, LOW); // backward
-  digitalWrite(secMotorDir, LOW); // backward
-  analogWrite(firstMotorSpeed, pwm); // speed
+  //Go backwards
+  digitalWrite(firstMotorDir, LOW); 	
+  digitalWrite(secMotorDir, LOW); 
+	
+	//Set speed	
+  analogWrite(firstMotorSpeed, pwm); 	
   analogWrite(secMotorSpeed, pwm);
+
+	//Wait for the right amount of time
   delay(duration);
-  analogWrite(firstMotorSpeed, 0); // speed
+
+	//Stop motors
+  analogWrite(firstMotorSpeed, 0); 
   analogWrite(secMotorSpeed, 0);
 }
 
 void rotateRight(int duration, int pwm) {
 
-  digitalWrite(firstMotorDir, HIGH); // forward
-  digitalWrite(secMotorDir, LOW); // backward
-  analogWrite(firstMotorSpeed, pwm); // speed
+	//Left motor goes forward
+  digitalWrite(firstMotorDir, HIGH); 	
+
+	//Right motor goes backwards
+  digitalWrite(secMotorDir, LOW); 	
+
+	//Set speed
+  analogWrite(firstMotorSpeed, pwm); 	
   analogWrite(secMotorSpeed, pwm);
+
+	//Wait for the right amount of time
   delay(duration);
-  analogWrite(firstMotorSpeed, 0); // speed
+
+	//Stop motors
+  analogWrite(firstMotorSpeed, 0); 	
   analogWrite(secMotorSpeed, 0);
 }
 
 void rotateLeft(int duration, int pwm) {
 
-  digitalWrite(firstMotorDir, LOW); // backward
-  digitalWrite(secMotorDir, HIGH); // forward
-  analogWrite(firstMotorSpeed, pwm); // speed
+	//Left motor goes backwards
+  digitalWrite(firstMotorDir, LOW);
+ 	
+	//Right motor goes forwards
+  digitalWrite(secMotorDir, HIGH);
+ 	
+	//Set speed
+  analogWrite(firstMotorSpeed, pwm); 	
   analogWrite(secMotorSpeed, pwm);
+	
+	//Wait for the right amount of time
   delay(duration);
-  analogWrite(firstMotorSpeed, 0); // speed
+
+	//Stop motors
+  analogWrite(firstMotorSpeed, 0); 
   analogWrite(secMotorSpeed, 0);
 }
