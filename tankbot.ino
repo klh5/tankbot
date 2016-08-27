@@ -153,12 +153,12 @@ int findBestGap() {
   median = getMedian();
   smoothData();
 
-  for(i=0;i<180;) {
+  for(i=0; i<180;) {
     j = i+1;
 
     if(mapValues[i]-median > 0) {
       counter = 1;
-      startEdge=i;
+      startEdge = i;
       if(i=0) {
         startDist = median;
       }
@@ -170,18 +170,18 @@ int findBestGap() {
         counter++;
       }
       endEdge=j+1;
-      if(j==179) {
+      if(j == 179) {
         endDist = median;
       }
       else {
         endDist = mapValues[j];
       }
-      if(counter>degreeGap) {
+      if(counter > degreeGap) {
         float minDist = 0;
         gapSize = getGapSize(startDist, endDist, counter);
         if(gapSize > 25) {
           gapFound = true;
-          for(int a=startEdge;a<endEdge;a++) {
+          for(int a=startEdge; a<endEdge; a++) {
             if(mapValues[a] > minDist) {
               minDist = mapValues[i];
             }
@@ -273,16 +273,15 @@ float getGapSize(float sideA, float sideB, float angle) {
 
 void checkForObstacle() {
 
-  float num_readings = 10;
+  float num_readings = 20;
   float total = 0;
   float distance;
   float average;
   float cmDistance;
 
-  for(int i=0;i<num_readings;i++) {
+  for(int i=0; i<num_readings; i++) {
     distance = 1234.85*pow(analogRead(IR_PIN),-1.15);
     total += distance;
-    delay(5);
   }
 
   average = total/num_readings;
